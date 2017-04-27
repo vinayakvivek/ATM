@@ -120,14 +120,12 @@ int doTransaction(uint16 user_id, uint16 user_pin, uint32 amount_requested, uint
 	int return_code = 0;
 	char line[N];
 
-	// ignore first of the file
     fgets(line, N, stream);
 
     int id, pin, admin, balance;
 
     bool userFound = false;
 
-    // read each line as process it
  	while (fscanf(stream, "%d,%d,%d,%d", &id, &pin, &admin, &balance) != EOF) {
 
 		if (id ==  user_id && pin == user_pin) {
@@ -137,6 +135,11 @@ int doTransaction(uint16 user_id, uint16 user_pin, uint32 amount_requested, uint
 				printf("%s\n", "User has admin privileges");
 				return_code = 3;
 			} else {
+				// if 1000 ruppee notes are not allowed
+				// if (n1000 > 0) {
+				// 	printf("%s\n", "Not enough balance in account");
+				// 	return_code = 2;
+				// } else 
 				if ((uint32)balance >= amount_requested) {
 					if (status == 1) {
 						balance -= amount_requested;
@@ -172,15 +175,15 @@ int main(int argc, char *argv[]) {
 	
 	struct arg_str *ivpOpt = arg_str0("i", "ivp", "<VID:PID>", "            vendor ID and product ID (e.g 04B4:8613)");
 	struct arg_str *vpOpt = arg_str1("v", "vp", "<VID:PID[:DID]>", "       VID, PID and opt. dev ID (e.g 1D50:602B:0001)");
-	struct arg_str *fwOpt = arg_str0("f", "fw", "<firmware.hex>", "        firmware to RAM-load (or use std fw)");
-	struct arg_str *progOpt = arg_str0("p", "program", "<config>", "         program a device");
-	struct arg_lit *helpOpt  = arg_lit0("h", "help", "                     print this help and exit");
+	// struct arg_str *fwOpt = arg_str0("f", "fw", "<firmware.hex>", "        firmware to RAM-load (or use std fw)");
+	// struct arg_str *progOpt = arg_str0("p", "program", "<config>", "         program a device");
+	// struct arg_lit *helpOpt  = arg_lit0("h", "help", "                     print this help and exit");
 	
 	struct arg_end *endOpt   = arg_end(20);
 	
 
 	void *argTable[] = {
-		ivpOpt, vpOpt, fwOpt, progOpt, helpOpt, endOpt
+		ivpOpt, vpOpt, endOpt
 	};
 
 	const char *progName = "flcli";
@@ -203,16 +206,17 @@ int main(int argc, char *argv[]) {
 
 	numErrors = arg_parse(argc, argv, argTable);
 
-	if ( helpOpt->count > 0 ) {
-		printf("FPGALink Command-Line Interface Copyright (C) 2012-2014 Chris McClelland\n\nUsage: %s", progName);
-		arg_print_syntax(stdout, argTable, "\n");
-		printf("\nInteract with an FPGALink device.\n\n");
-		arg_print_glossary(stdout, argTable,"  %-10s %s\n");
+	// if ( helpOpt->count > 0 ) {
+	// 	printf("FPGALink Command-Line Interface Copyright (C) 2012-2014 Chris McClelland\n\nUsage: %s", progName);
+	// 	arg_print_syntax(stdout, argTable, "\n");
+	// 	printf("\nInteract with an FPGALink device.\n\n");
+	// 	arg_print_glossary(stdout, argTable,"  %-10s %s\n");
 
-		printf("\n******* Modified for CS254 Lab projects *******\n");
-				
-		FAIL(FLP_SUCCESS, cleanup);
-	}
+	// 	printf("\n******* Modified for CS254 Lab projects *******\n");
+	// 	printf("\n - implemented yOpt at line 813\n\n");
+		
+	// 	FAIL(FLP_SUCCESS, cleanup);
+	// }
 
 
 	if ( numErrors > 0 ) {
@@ -225,20 +229,29 @@ int main(int argc, char *argv[]) {
 	CHECK_STATUS(fStatus, FLP_LIBERR, cleanup);
 
 	vp = vpOpt->sval[0];
+	// vp = "1d50:602b:0002";
+	// ivp = "1443:0007";
+
+	printf("vpOpt - %s\n", vp);
+
+
 
 	printf("Attempting to open connection to FPGALink device %s...\n", vp);
 	fStatus = flOpen(vp, &handle, NULL);
 	if ( fStatus ) {
 		if ( ivpOpt->count ) {
+		// if (1) {
 			int count = 60;
 			uint8 flag;
 			ivp = ivpOpt->sval[0];
 			printf("Loading firmware into %s...\n", ivp);
-			if ( fwOpt->count ) {
-				fStatus = flLoadCustomFirmware(ivp, fwOpt->sval[0], &error);
-			} else {
-				fStatus = flLoadStandardFirmware(ivp, vp, &error);
-			}
+
+			fStatus = flLoadStandardFirmware(ivp, vp, &error);
+			// if ( fwOpt->count ) {
+			// 	fStatus = flLoadCustomFirmware(ivp, fwOpt->sval[0], &error);
+			// } else {
+			// 	fStatus = flLoadStandardFirmware(ivp, vp, &error);
+			// }
 			CHECK_STATUS(fStatus, FLP_LIBERR, cleanup);
 			
 			printf("Awaiting renumeration");
@@ -274,18 +287,18 @@ int main(int argc, char *argv[]) {
 	isNeroCapable = flIsNeroCapable(handle);
 	isCommCapable = flIsCommCapable(handle, conduit);
 
-	if ( progOpt->count ) {
-		printf("Programming device...\n");
-		if ( isNeroCapable ) {
-			fStatus = flSelectConduit(handle, 0x00, &error);
-			CHECK_STATUS(fStatus, FLP_LIBERR, cleanup);
-			fStatus = flProgram(handle, progOpt->sval[0], NULL, &error);
-			CHECK_STATUS(fStatus, FLP_LIBERR, cleanup);
-		} else {
-			fprintf(stderr, "Program operation requested but device at %s does not support NeroProg\n", vp);
-			FAIL(FLP_ARGS, cleanup);
-		}
-	}
+	// if ( progOpt->count ) {
+	// 	printf("Programming device...\n");
+	// 	if ( isNeroCapable ) {
+	// 		fStatus = flSelectConduit(handle, 0x00, &error);
+	// 		CHECK_STATUS(fStatus, FLP_LIBERR, cleanup);
+	// 		fStatus = flProgram(handle, progOpt->sval[0], NULL, &error);
+	// 		CHECK_STATUS(fStatus, FLP_LIBERR, cleanup);
+	// 	} else {
+	// 		fprintf(stderr, "Program operation requested but device at %s does not support NeroProg\n", vp);
+	// 		FAIL(FLP_ARGS, cleanup);
+	// 	}
+	// }
 
 	
 	// ATM PART
@@ -316,8 +329,6 @@ int main(int argc, char *argv[]) {
 					// sleep for 1 sec
 					flSleep(1000);
 
-					// printf("%d\n", byte);
-
 					if (byte == 0x01 || byte == 0x02) {
 						if (prevByte == byte) {
 							count++;
@@ -332,6 +343,7 @@ int main(int argc, char *argv[]) {
 					}
 				}
 
+				printf("%d\n", byte);
 
 				// check not required, but just to assure
 				if (count == 3) {
@@ -360,8 +372,8 @@ int main(int argc, char *argv[]) {
 
 
 					// NOTE hashing
-					PIN = (PIN << 11) + (PIN >> (16 - 11));
-					// printf("%s\n", "PIN not hashed");
+					// PIN = (PIN << 11) + (PIN >> (16 - 11));
+					printf("%s\n", "PIN not hashed");
 
 					uint8 n2000 = (v1 & 0x000000ff);
 					uint8 n1000 = (v1 & 0x0000ff00) >> 8;
